@@ -100,4 +100,41 @@ def handle_client(client_socket,tuple_space):
             print(f"Error handling client: {e}")
             break
     client_socket.close()
- 
+
+def main():
+    port = 51234
+    tuple_space = TupleSpace()
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind(('0.0.0.0', port))
+    server_socket.listen(5)
+    print(f"Server listening on port {port}")
+
+    def print_summary():
+        while True:
+            time.sleep(10)
+            summary = tuple_space.get_summary()
+            print(f"Tuple space summary:")
+            print(f"Number of tuples: {summary['tuple_count']}")
+            print(f"Average tuple size: {summary['avg_tuple_size']}")
+            print(f"Average key size: {summary['avg_key_size']}")
+            print(f"Average value size: {summary['avg_value_size']}")
+            print(f"Total clients connected: {summary['client_count']}")
+            print(f"Total operations: {summary['operation_count']}")
+            print(f"Total READs: {summary['read_count']}")
+            print(f"Total GETs: {summary['get_count']}")
+            print(f"Total PUTs: {summary['put_count']}")
+            print(f"Total errors: {summary['error_count']}")
+            print("-" * 50)
+
+    summary_thread = threading.Thread(target=print_summary)
+    summary_thread.daemon = True
+    summary_thread.start()
+
+    while True:
+        client_socket, client_address = server_socket.accept()
+        client_thread = threading.Thread(target=handle_client, args=(client_socket, tuple_space))
+        client_thread.start()
+
+if __name__ == "__main__":
+    main()
