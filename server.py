@@ -60,3 +60,44 @@ class TupleSpace:
             "put_count": self.put_count,
             "error_count": self.error_count
         }
+    
+def handle_client(client_socket,tuple_space):
+    tuple_space.client_count += 1
+    while True:
+        try:
+            request = client_socket.recv(1024).decode('utf-8')
+            if not request:
+                break
+            message_size = int(request[:3])
+            command = request[3]
+            key = request[4:message_size - 1].strip()
+            value = request[message_size - 1:].strip() if command == 'P' else ""
+
+            if command == 'R':
+                result = tuple_space.read(key)
+                if result:
+                    response = f"{len(f'OK ({key}, {result}) read'):03d} OK ({key}, {result}) read"
+                else:
+                    response = f"{len(f'ERR {key} does not exist'):03d} ERR {key} does not exist"
+            elif command == 'G':
+                result = tuple_space.get(key)
+                if result:
+                    response = f"{len(f'OK ({key}, {result}) removed'):03d} OK ({key}, {result}) removed"
+                else:
+                    response = f"{len(f'ERR {key} does not exist'):03d} ERR {key} does not exist"
+            elif command == 'P':
+                result = tuple_space.put(key, value)
+                if result == 0:
+                    response = f"{len(f'OK ({key}, {value}) added'):03d} OK ({key}, {value}) added"
+                else:
+                    response = f"{len(f'ERR {key} already exists'):03d} ERR {key} already exists"
+            else:
+                response = f"{len('ERR invalid command'):03d} ERR invalid command"
+
+            tuple_space.operation_count += 1
+            client_socket.send(response.encode('utf-8'))
+        except Exception as e:
+            print(f"Error handling client: {e}")
+            break
+    client_socket.close()
+ 
